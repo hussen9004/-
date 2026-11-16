@@ -1,0 +1,1519 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>كيبورد ذكي AI - لوحة مفاتيح عربية وصانع ملصقات</title>
+    <meta name="theme-color" content="#0f172a">
+    <meta name="description" content="لوحة مفاتيح عربية ذكية وصانع ملصقات قابل للتثبيت كتطبيق">
+    <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@700&family=Cairo:wght@400;600;700;800&family=Lalezar&family=Reem+Kufi:wght@600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: radial-gradient(circle at top right, #1e1b4b, #0f172a, #020617);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        .font-kufi { font-family: 'Reem Kufi', sans-serif; }
+        .font-amiri { font-family: 'Amiri', serif; }
+        .font-lalezar { font-family: 'Lalezar', cursive; }
+        .font-cairo { font-family: 'Cairo', sans-serif; }
+
+        /* إخفاء شريط التمرير مع السماح بالتمرير */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* ثيمات الكيبورد الثلاثة */
+        /* 1. الوضع الليلي النيون (Neon Night) */
+        .theme-neon {
+            --kb-bg: #090d16;
+            --kb-toolbar: #0f172a;
+            --key-bg: #111827;
+            --key-action: #1e1b4b;
+            --key-text: #22d3ee;
+            --key-shadow: 0 2px 8px rgba(34, 211, 238, 0.25);
+            --accent: #d946ef;
+            --border-color: rgba(34, 211, 238, 0.35);
+            --sub-text: #94a3b8;
+            --panel-bg: rgba(15, 23, 42, 0.85);
+        }
+
+        /* 2. الوضع النهاري الأنيق (Elegant Light) */
+        .theme-light {
+            --kb-bg: #e2e8f0;
+            --kb-toolbar: #f8fafc;
+            --key-bg: #ffffff;
+            --key-action: #cbd5e1;
+            --key-text: #0f172a;
+            --key-shadow: 0 2px 0 #94a3b8;
+            --accent: #4f46e5;
+            --border-color: rgba(15, 23, 42, 0.1);
+            --sub-text: #475569;
+            --panel-bg: rgba(255, 255, 255, 0.9);
+        }
+
+        /* 3. ثيم الزجاج الشفاف (Transparent Glass) */
+        .theme-glass {
+            --kb-bg: rgba(255, 255, 255, 0.12);
+            --kb-toolbar: rgba(255, 255, 255, 0.18);
+            --key-bg: rgba(255, 255, 255, 0.22);
+            --key-action: rgba(255, 255, 255, 0.12);
+            --key-text: #ffffff;
+            --key-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            --accent: #38bdf8;
+            --border-color: rgba(255, 255, 255, 0.25);
+            --sub-text: #e2e8f0;
+            --panel-bg: rgba(15, 23, 42, 0.65);
+        }
+
+        .keyboard-container {
+            background: var(--kb-bg);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border-top: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+        .kb-toolbar {
+            background: var(--kb-toolbar);
+            border-bottom: 1px solid var(--border-color);
+        }
+        .kb-key {
+            background: var(--key-bg);
+            color: var(--key-text);
+            box-shadow: var(--key-shadow);
+            border: 1px solid var(--border-color);
+            transition: transform 0.06s ease, filter 0.12s ease;
+            user-select: none;
+        }
+        .kb-key:active {
+            transform: scale(0.91) translateY(1px);
+            filter: brightness(1.2);
+        }
+        .kb-key-action {
+            background: var(--key-action);
+        }
+        .kb-subtext {
+            color: var(--sub-text);
+        }
+
+        /* أحجام الأزرار القابلة للتخصيص */
+        .key-size-sm .kb-key { padding-top: 0.45rem; padding-bottom: 0.45rem; font-size: 0.8rem; }
+        .key-size-md .kb-key { padding-top: 0.625rem; padding-bottom: 0.625rem; font-size: 0.9rem; }
+        .key-size-lg .kb-key { padding-top: 0.8rem; padding-bottom: 0.8rem; font-size: 1rem; }
+
+        /* تأثير الإطار الأبيض للملصق */
+        .sticker-cutout {
+            filter: drop-shadow(0px 0px 3px #ffffff)
+                    drop-shadow(0px 0px 3px #ffffff)
+                    drop-shadow(0px 0px 3px #ffffff)
+                    drop-shadow(0px 6px 12px rgba(0,0,0,0.45));
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* تأثير المسح الضوئي للقص الذكي */
+        @keyframes scanLine {
+            0% { top: 0%; opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+        .scanner-bar {
+            animation: scanLine 1.2s ease-in-out infinite;
+        }
+
+        /* حركة ظهور الرسائل */
+        @keyframes msgPop {
+            0% { opacity: 0; transform: translateY(12px) scale(0.95); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .msg-animate {
+            animation: msgPop 0.25s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="text-slate-100 flex flex-col lg:flex-row items-center justify-center p-3 sm:p-6 gap-6">
+
+    <!-- لوحة التحكم الجانبية للتجربة السريعة والشرح -->
+    <div class="w-full max-w-md lg:max-w-sm bg-slate-900/85 backdrop-blur-xl border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                    <i data-lucide="sparkles" class="w-6 h-6 text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-extrabold bg-gradient-to-l from-white to-slate-300 bg-clip-text text-transparent">كيبورد ذكي AI</h1>
+                    <p class="text-xs text-slate-400">الإصدار الاحترافي المتكامل</p>
+                </div>
+            </div>
+            <button onclick="togglePanel('settings')" class="px-3 py-1.5 rounded-xl bg-indigo-600/20 border border-indigo-500/40 text-indigo-300 text-xs font-bold hover:bg-indigo-600/30 transition flex items-center gap-1.5">
+                <i data-lucide="settings" class="w-3.5 h-3.5"></i>
+                <span>التفعيل</span>
+            </button>
+        </div>
+
+        <!-- اختيار ثيم الكيبورد -->
+        <div class="space-y-2">
+            <label class="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
+                <i data-lucide="palette" class="w-4 h-4 text-indigo-400"></i>
+                ثيمات لوحة المفاتيح الفورية
+            </label>
+            <div class="grid grid-cols-3 gap-2">
+                <button onclick="setTheme('theme-neon')" id="btn-theme-neon" class="theme-selector active ring-2 ring-cyan-400 bg-slate-800 p-2.5 rounded-xl text-xs font-bold flex flex-col items-center gap-1.5 transition">
+                    <span class="w-5 h-5 rounded-full bg-slate-950 border-2 border-cyan-400 shadow-[0_0_8px_#22d3ee]"></span>
+                    ليلي نيون
+                </button>
+                <button onclick="setTheme('theme-light')" id="btn-theme-light" class="theme-selector bg-slate-800/60 hover:bg-slate-800 p-2.5 rounded-xl text-xs font-bold flex flex-col items-center gap-1.5 transition">
+                    <span class="w-5 h-5 rounded-full bg-slate-100 border border-slate-400"></span>
+                    نهاري أنيق
+                </button>
+                <button onclick="setTheme('theme-glass')" id="btn-theme-glass" class="theme-selector bg-slate-800/60 hover:bg-slate-800 p-2.5 rounded-xl text-xs font-bold flex flex-col items-center gap-1.5 transition">
+                    <span class="w-5 h-5 rounded-full bg-gradient-to-tr from-sky-400/50 to-white/40 border border-white/50"></span>
+                    زجاجي شفاف
+                </button>
+            </div>
+        </div>
+
+        <!-- جمل جاهزة للتجربة السريعة -->
+        <div class="space-y-2">
+            <label class="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
+                <i data-lucide="zap" class="w-4 h-4 text-amber-400"></i>
+                تجربة سريعة لمساعد الذكاء الاصطناعي:
+            </label>
+            <div class="flex flex-wrap gap-1.5">
+                <button onclick="insertSampleText('مرحبا كيف حالك ابي اعتذر عن التاخير اليوم بسبب الزحمه')" class="text-xs bg-slate-800 hover:bg-indigo-600/30 border border-slate-700 hover:border-indigo-500/50 px-3 py-1.5 rounded-lg transition text-right">
+                    "اعتذار عن التأخير..."
+                </button>
+                <button onclick="insertSampleText('مبروك النجاح والتخرج تستاهل كل خير ياصديقي')" class="text-xs bg-slate-800 hover:bg-indigo-600/30 border border-slate-700 hover:border-indigo-500/50 px-3 py-1.5 rounded-lg transition text-right">
+                    "تهنئة بالتخرج..."
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-indigo-950/40 border border-indigo-500/20 rounded-2xl p-3.5 text-xs text-slate-300 space-y-1.5 leading-relaxed">
+            <div class="font-bold text-indigo-300 flex items-center gap-1.5">
+                <i data-lucide="sparkles" class="w-4 h-4"></i>
+                ميزات النسخة المتكاملة:
+            </div>
+            <p>• <span class="text-cyan-300 font-bold">مساعد AI:</span> تشكيل وتصحيح، صياغة رسمية/ودية/شعرية، ترجمة، وتوليد ردود ذكية على آخر رسالة.</p>
+            <p>• <span class="text-fuchsia-300 font-bold">صانع الملصقات:</span> قص ذكي، إطار أبيض، وكتابة نصوص عربية بخطوط وألوان متعددة.</p>
+            <p>• <span class="text-amber-300 font-bold">شريط الأدوات:</span> حافظة ذكية، ثيمات فورية، وإعدادات تخصيص الصوت والحجم.</p>
+        </div>
+    </div>
+
+    <!-- إطار الهاتف الذكي (Smartphone Mockup) -->
+    <div class="relative w-full max-w-[405px] h-[800px] max-h-[92vh] bg-slate-950 rounded-[3rem] border-[8px] border-slate-800 shadow-[0_25px_70px_-15px_rgba(0,0,0,0.85)] flex flex-col overflow-hidden ring-1 ring-white/10">
+        
+        <!-- النوتش العلوي وشريط الحالة -->
+        <div class="bg-slate-900/95 px-6 pt-2.5 pb-2 flex items-center justify-between text-[11px] font-semibold text-slate-300 select-none z-20">
+            <span>9:41</span>
+            <div class="w-24 h-5 bg-black rounded-full flex items-center justify-end px-2">
+                <div class="w-2.5 h-2.5 rounded-full bg-slate-800 border border-slate-700"></div>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <i data-lucide="wifi" class="w-3.5 h-3.5"></i>
+                <i data-lucide="battery-full" class="w-4 h-4 text-emerald-400"></i>
+            </div>
+        </div>
+
+        <!-- رأس تطبيق المحادثة -->
+        <div class="bg-slate-900/95 backdrop-blur-md border-b border-slate-800/80 px-4 py-2.5 flex items-center justify-between z-10">
+            <div class="flex items-center gap-3">
+                <div class="relative">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center font-bold text-white shadow-md">
+                        س
+                    </div>
+                    <span class="absolute bottom-0 right-0 w-3 h-3 bg-emerald-400 border-2 border-slate-900 rounded-full"></span>
+                </div>
+                <div>
+                    <h2 class="text-sm font-bold text-white">سارة العتيبي</h2>
+                    <p class="text-[11px] text-emerald-400">متصلة الآن</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-1.5 text-slate-400">
+                <button onclick="copyCurrentToClipboard()" title="نسخ النص للحافظة الذكية" class="p-2 hover:bg-slate-800 rounded-full transition text-slate-300">
+                    <i data-lucide="copy" class="w-4 h-4"></i>
+                </button>
+                <button onclick="clearChat()" title="مسح المحادثة" class="p-2 hover:bg-slate-800 rounded-full transition">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- منطقة الرسائل (Chat Area) -->
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-3.5 space-y-3 bg-gradient-to-b from-slate-950 via-[#0b1120] to-slate-900 no-scrollbar">
+            <!-- رسالة ترحيبية واردة -->
+            <div class="flex items-end gap-2 max-w-[85%] msg-animate">
+                <div class="bg-slate-800/90 text-slate-100 px-3.5 py-2.5 rounded-2xl rounded-br-sm text-xs sm:text-sm shadow-md border border-slate-700/50 leading-relaxed">
+                    هلا والله! كيف حالك؟ وش رايك نجتمع اليوم على القهوة الساعة 8 مساءً؟ ☕✨
+                    <span class="block text-[10px] text-slate-400 mt-1 text-left">9:40 م</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- شريط إدخال الرسالة -->
+        <div class="bg-slate-900/95 border-t border-slate-800 px-3 py-2 flex items-center gap-2">
+            <div class="flex-1 bg-slate-800/90 border border-slate-700/80 rounded-2xl px-3.5 py-2 flex items-center justify-between min-h-[42px]">
+                <div id="input-display" class="text-sm text-white break-words w-full outline-none max-h-14 overflow-y-auto no-scrollbar">
+                    <span id="input-placeholder" class="text-slate-500">اكتب رسالة هنا...</span>
+                    <span id="input-text"></span><span class="inline-block w-0.5 h-4 bg-indigo-400 animate-pulse align-middle mr-0.5"></span>
+                </div>
+            </div>
+            <button onclick="sendMessage()" id="send-btn" class="w-10 h-10 rounded-full bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white flex items-center justify-center shadow-lg shadow-indigo-600/30 transition shrink-0">
+                <i data-lucide="send-horizontal" class="w-5 h-5 rotate-180"></i>
+            </button>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- قسم لوحة المفاتيح الذكية (AI Smart Keyboard) -->
+        <!-- ========================================== -->
+        <div id="keyboard-wrapper" class="keyboard-container theme-neon key-size-md flex flex-col select-none relative">
+            
+            <!-- شريط الأدوات الذكي أعلى الكيبورد (5 أيقونات رئيسية) -->
+            <div class="kb-toolbar px-2 py-1.5 flex items-center justify-between gap-1 overflow-x-auto no-scrollbar">
+                <!-- 1. مساعد الذكاء الاصطناعي AI -->
+                <button onclick="togglePanel('ai')" id="tab-ai" class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-[11px] font-bold shadow-md hover:brightness-110 active:scale-95 transition shrink-0">
+                    <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                    <span>مساعد AI</span>
+                </button>
+
+                <!-- 2. صانع الملصقات -->
+                <button onclick="togglePanel('sticker')" id="tab-sticker" class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white text-[11px] font-bold shadow-md hover:brightness-110 active:scale-95 transition shrink-0">
+                    <i data-lucide="sticker" class="w-3.5 h-3.5"></i>
+                    <span>ملصقات</span>
+                </button>
+
+                <!-- 3. الحافظة الذكية -->
+                <button onclick="togglePanel('clipboard')" id="tab-clipboard" class="p-1.5 rounded-xl hover:bg-white/10 kb-subtext transition shrink-0" title="الحافظة الذكية">
+                    <i data-lucide="clipboard-list" class="w-4 h-4"></i>
+                </button>
+
+                <!-- 4. الثيمات -->
+                <button onclick="cycleTheme()" class="p-1.5 rounded-xl hover:bg-white/10 kb-subtext transition shrink-0" title="تبديل الثيم">
+                    <i data-lucide="palette" class="w-4 h-4"></i>
+                </button>
+
+                <!-- 5. الإعدادات والتفعيل -->
+                <button onclick="togglePanel('settings')" id="tab-settings" class="p-1.5 rounded-xl hover:bg-white/10 kb-subtext transition shrink-0" title="الإعدادات والتفعيل">
+                    <i data-lucide="settings" class="w-4 h-4"></i>
+                </button>
+
+                <!-- زر العودة للكيبورد الأساسي -->
+                <button onclick="togglePanel('keys')" id="tab-keys" class="hidden p-1.5 rounded-xl bg-indigo-500 text-white transition shrink-0" title="العودة للوحة المفاتيح">
+                    <i data-lucide="keyboard" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <!-- 1. لوحة المفاتيح الأساسية (Keys View) -->
+            <div id="panel-keys" class="p-1.5 space-y-1.5">
+                <!-- صف التنبؤ الذكي بالكلمات -->
+                <div id="predictive-bar" class="grid grid-cols-3 gap-1 pb-1 border-b border-white/10 text-center">
+                    <button onclick="applySuggestion(this.innerText)" class="text-xs py-1 rounded-lg hover:bg-white/10 kb-subtext truncate transition">السلام عليكم</button>
+                    <button onclick="applySuggestion(this.innerText)" class="text-xs py-1 rounded-lg hover:bg-white/10 text-indigo-400 font-bold truncate border-x border-white/10 transition">إن شاء الله</button>
+                    <button onclick="applySuggestion(this.innerText)" class="text-xs py-1 rounded-lg hover:bg-white/10 kb-subtext truncate transition">يعطيك العافية</button>
+                </div>
+
+                <!-- أزرار الحروف / الأرقام / الإيموجي -->
+                <div id="keyboard-rows" class="space-y-1.5"></div>
+            </div>
+
+            <!-- 2. لوحة مساعد الذكاء الاصطناعي المدمج (AI Assistant Panel) -->
+            <div id="panel-ai" class="hidden p-2.5 space-y-2 h-[255px] overflow-y-auto no-scrollbar">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-indigo-400 flex items-center gap-1.5">
+                        <i data-lucide="bot" class="w-4 h-4"></i>
+                        مساعد الذكاء الاصطناعي الفوري
+                    </span>
+                    <button onclick="togglePanel('keys')" class="text-[11px] kb-subtext hover:text-white flex items-center gap-0.5 bg-white/5 px-2 py-0.5 rounded-lg">
+                        <span>كيبورد</span>
+                        <i data-lucide="x" class="w-3 h-3"></i>
+                    </button>
+                </div>
+
+                <!-- أزرار أوامر الذكاء الاصطناعي (6 خيارات متكاملة) -->
+                <div class="grid grid-cols-3 gap-1.5">
+                    <button onclick="processAI('spell')" class="p-1.5 rounded-xl bg-white/5 hover:bg-emerald-600/30 border border-white/10 text-center transition">
+                        <div class="text-sm">✅</div>
+                        <div class="text-[10px] font-bold">تصحيح وتشكيل</div>
+                    </button>
+                    <button onclick="processAI('formal')" class="p-1.5 rounded-xl bg-white/5 hover:bg-indigo-600/30 border border-white/10 text-center transition">
+                        <div class="text-sm">👔</div>
+                        <div class="text-[10px] font-bold">صياغة رسمية</div>
+                    </button>
+                    <button onclick="processAI('friendly')" class="p-1.5 rounded-xl bg-white/5 hover:bg-pink-600/30 border border-white/10 text-center transition">
+                        <div class="text-sm">😊</div>
+                        <div class="text-[10px] font-bold">أسلوب ودي</div>
+                    </button>
+                    <button onclick="processAI('poetic')" class="p-1.5 rounded-xl bg-white/5 hover:bg-purple-600/30 border border-white/10 text-center transition">
+                        <div class="text-sm">✨</div>
+                        <div class="text-[10px] font-bold">صياغة شعرية</div>
+                    </button>
+                    <button onclick="processAI('translate')" class="p-1.5 rounded-xl bg-white/5 hover:bg-sky-600/30 border border-white/10 text-center transition">
+                        <div class="text-sm">🌐</div>
+                        <div class="text-[10px] font-bold">ترجمة للإنجليزية</div>
+                    </button>
+                    <button onclick="processAI('reply')" class="p-1.5 rounded-xl bg-gradient-to-tr from-amber-500/20 to-orange-500/20 hover:bg-amber-600/30 border border-amber-400/40 text-center transition">
+                        <div class="text-sm">💡</div>
+                        <div class="text-[10px] font-bold text-amber-300">توليد رد ذكي</div>
+                    </button>
+                </div>
+
+                <!-- ميزات AI الفورية أثناء الكتابة -->
+                <div class="grid grid-cols-2 gap-1.5 bg-black/20 border border-white/10 rounded-xl p-1.5">
+                    <button id="live-spell-btn" onclick="toggleLiveAssist('spell')" class="rounded-lg bg-white/10 hover:bg-emerald-600/30 px-2 py-1.5 text-[10px] font-bold text-right transition">
+                        <span class="block text-emerald-300">✓ تدقيق فوري</span>
+                        <span class="block text-[9px] text-slate-400 font-normal">تصحيح أثناء الكتابة</span>
+                    </button>
+                    <button id="live-translate-btn" onclick="toggleLiveAssist('translate')" class="rounded-lg bg-white/10 hover:bg-sky-600/30 px-2 py-1.5 text-[10px] font-bold text-right transition">
+                        <span class="block text-sky-300">⇄ ترجمة فورية</span>
+                        <span class="block text-[9px] text-slate-400 font-normal">اقتراح إنجليزي مباشر</span>
+                    </button>
+                </div>
+                <div id="live-assist-box" class="hidden bg-black/30 border border-emerald-500/20 rounded-xl px-2 py-1.5 text-[10px] leading-relaxed">
+                    <span id="live-assist-label" class="text-slate-400"></span>
+                    <span id="live-assist-output" class="block text-white font-semibold"></span>
+                    <button id="live-assist-apply" onclick="applyLiveAssist()" class="hidden mt-1 px-2 py-0.5 rounded-md bg-indigo-600 text-white text-[9px] font-bold">اعتماد الاقتراح</button>
+                </div>
+
+                <!-- نتيجة الذكاء الاصطناعي -->
+                <div id="ai-result-box" class="bg-black/30 border border-indigo-500/30 rounded-xl p-2 space-y-1.5">
+                    <div id="ai-status" class="text-[10px] text-slate-400">اكتب نصاً ثم اختر أداة، أو اضغط "توليد رد ذكي" للرد على آخر رسالة...</div>
+                    <div id="ai-output" class="text-xs text-white font-semibold leading-relaxed hidden"></div>
+                    <button id="ai-apply-btn" onclick="applyAIResult()" class="hidden w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold transition">
+                        اعتماد النص في الرسالة ✓
+                    </button>
+                </div>
+            </div>
+
+            <!-- 3. صانع الملصقات المتكامل من الاستديو (Sticker Studio Panel) -->
+            <div id="panel-sticker" class="hidden p-2.5 space-y-2 h-[345px] overflow-y-auto no-scrollbar">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <button onclick="switchStickerTab('create')" id="st-tab-create" class="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-fuchsia-600 text-white transition">صانع الاستديو</button>
+                        <button onclick="switchStickerTab('library')" id="st-tab-library" class="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white/10 kb-subtext transition">مكتبتي (<span id="sticker-count">4</span>)</button>
+                    </div>
+                    <button onclick="togglePanel('keys')" class="text-[11px] kb-subtext hover:text-white flex items-center gap-0.5 bg-white/5 px-2 py-0.5 rounded-lg">
+                        <span>كيبورد</span>
+                        <i data-lucide="x" class="w-3 h-3"></i>
+                    </button>
+                </div>
+
+                <!-- تبويب 1: إنشاء ملصق جديد -->
+                <div id="sticker-view-create" class="space-y-2">
+                    <!-- اختيار صورة -->
+                    <div id="sticker-step-select" class="space-y-2" ondragover="handleUploadDragOver(event)" ondrop="handleUploadDrop(event)">
+                        <label class="flex items-center justify-center gap-2 w-full py-2 px-3 rounded-xl border-2 border-dashed border-fuchsia-500/60 bg-fuchsia-500/15 hover:bg-fuchsia-500/25 cursor-pointer transition text-xs font-bold text-fuchsia-300">
+                            <i data-lucide="image-plus" class="w-4 h-4"></i>
+                            <span>رفع صورة حقيقية من الاستديو</span>
+                            <input type="file" id="studio-upload" accept="image/*,.heic,.heif" class="hidden" onchange="handleImageUpload(event)">
+                        </label>
+
+                        <!-- توليد ملصق بالوصف النصي عبر الذكاء الاصطناعي -->
+                        <div class="rounded-xl border border-indigo-400/30 bg-indigo-950/40 p-2 space-y-1.5">
+                            <div class="flex items-center gap-1.5 text-[11px] font-bold text-indigo-300">✨ توليد ملصق بالذكاء الاصطناعي</div>
+                            <textarea id="ai-sticker-prompt" rows="2" maxlength="500" placeholder="مثال: قط برتقالي يضحك، أسلوب كرتوني، خلفية شفافة" class="w-full resize-none bg-black/30 border border-white/15 rounded-lg px-2 py-1.5 text-[10px] text-white placeholder-slate-500 outline-none focus:border-indigo-400"></textarea>
+                            <button id="ai-sticker-generate-btn" onclick="generateAISticker()" class="w-full py-1.5 rounded-lg bg-gradient-to-r from-indigo-600 to-fuchsia-600 hover:brightness-110 text-white text-[11px] font-bold transition flex items-center justify-center gap-1.5">
+                                <i data-lucide="wand-sparkles" class="w-3.5 h-3.5"></i><span>توليد الملصق الآن</span>
+                            </button>
+                            <div id="ai-sticker-status" class="hidden text-[9px] text-slate-400 text-center"></div>
+                        </div>
+
+                        <div class="text-[10px] kb-subtext">أو اختر نموذجاً جاهزاً للتعديل والزخرفة:</div>
+                        <div class="grid grid-cols-4 gap-1.5">
+                            <button onclick="selectPresetSticker('cat')" class="bg-white/5 hover:bg-white/15 border border-white/10 rounded-xl p-1.5 flex flex-col items-center gap-0.5 transition">
+                                <span class="text-2xl">🐱</span>
+                                <span class="text-[9px] kb-subtext">قط مصدوم</span>
+                            </button>
+                            <button onclick="selectPresetSticker('coffee')" class="bg-white/5 hover:bg-white/15 border border-white/10 rounded-xl p-1.5 flex flex-col items-center gap-0.5 transition">
+                                <span class="text-2xl">☕</span>
+                                <span class="text-[9px] kb-subtext">مزاج قهوة</span>
+                            </button>
+                            <button onclick="selectPresetSticker('cool')" class="bg-white/5 hover:bg-white/15 border border-white/10 rounded-xl p-1.5 flex flex-col items-center gap-0.5 transition">
+                                <span class="text-2xl">😎</span>
+                                <span class="text-[9px] kb-subtext">رايق</span>
+                            </button>
+                            <button onclick="selectPresetSticker('party')" class="bg-white/5 hover:bg-white/15 border border-white/10 rounded-xl p-1.5 flex flex-col items-center gap-0.5 transition">
+                                <span class="text-2xl">🥳</span>
+                                <span class="text-[9px] kb-subtext">مبروك</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- محرر الملصق (القص الذكي + الإطار + الخطوط والألوان) -->
+                    <div id="sticker-step-editor" class="hidden space-y-2">
+                        <div class="flex gap-2.5 items-center">
+                            <!-- منطقة معاينة الملصق -->
+                            <div class="relative w-24 h-24 rounded-2xl bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiI+PHJlY3Qgd2lkdGg9IjgiIGhlaWdodD0iOCIgZmlsbD0iIzMzNDE1NSIvPjxyZWN0IHg9IjgiIHk9IjgiIHdpZHRoPSI4IiBoZWlnaHQ9IjgiIGZpbGw9IiMzMzQxNTUiLz48L3N2Zz4=')] bg-slate-800 border border-white/20 flex items-center justify-center overflow-hidden shrink-0">
+                                <div id="sticker-preview-content" class="relative flex items-center justify-center w-20 h-20 transition-all duration-300"></div>
+                                <!-- نص مزخرف فوق الملصق -->
+                                <div id="sticker-overlay-text" class="absolute bottom-1 px-1.5 py-0.5 rounded bg-black/75 font-kufi text-[11px] font-bold text-center max-w-[92%] truncate pointer-events-none hidden"></div>
+                                <!-- شريط المسح الذكي -->
+                                <div id="ai-scanner" class="hidden absolute inset-x-0 h-1 bg-cyan-400 shadow-[0_0_12px_#22d3ee] scanner-bar"></div>
+                            </div>
+
+                            <!-- أدوات التعديل والزخرفة -->
+                            <div class="flex-1 space-y-1.5">
+                                <div class="flex gap-1">
+                                    <button onclick="toggleSmartCutout()" id="btn-cutout" class="flex-1 py-1 px-1.5 rounded-lg bg-cyan-600/30 border border-cyan-400/50 text-cyan-200 text-[10px] font-bold flex items-center justify-center gap-1 transition">
+                                        <i data-lucide="scissors" class="w-3 h-3"></i>
+                                        <span>قص ذكي</span>
+                                    </button>
+                                    <button onclick="toggleWhiteBorder()" id="btn-border" class="flex-1 py-1 px-1.5 rounded-lg bg-white/10 border border-white/20 text-white text-[10px] font-bold flex items-center justify-center gap-1 transition">
+                                        <i data-lucide="square" class="w-3 h-3"></i>
+                                        <span>إطار أبيض</span>
+                                    </button>
+                                </div>
+
+                                <!-- إدخال النص المزخرف -->
+                                <input type="text" id="sticker-caption-input" oninput="updateStickerCaption(this.value)" placeholder="اكتب نصاً مزخرفاً..." class="w-full bg-black/40 border border-white/15 rounded-lg px-2 py-1 text-[11px] text-white placeholder-slate-400 focus:outline-none focus:border-fuchsia-400">
+
+                                <!-- اختيار الخط العربي وألوان النص -->
+                                <div class="flex items-center justify-between gap-1">
+                                    <select id="sticker-font-select" onchange="updateStickerStyle()" class="bg-slate-800 text-white text-[10px] rounded-md px-1.5 py-0.5 border border-white/15 outline-none">
+                                        <option value="font-kufi">خط كوفي</option>
+                                        <option value="font-lalezar">خط لاليزار</option>
+                                        <option value="font-amiri">خط أميري</option>
+                                        <option value="font-cairo">خط كايرو</option>
+                                    </select>
+                                    <div class="flex items-center gap-1">
+                                        <button onclick="setStickerColor('#ffffff')" class="w-4 h-4 rounded-full bg-white border border-slate-500"></button>
+                                        <button onclick="setStickerColor('#facc15')" class="w-4 h-4 rounded-full bg-yellow-400"></button>
+                                        <button onclick="setStickerColor('#38bdf8')" class="w-4 h-4 rounded-full bg-sky-400"></button>
+                                        <button onclick="setStickerColor('#f472b6')" class="w-4 h-4 rounded-full bg-pink-400"></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- أزرار الحفظ والإرسال -->
+                        <div class="flex gap-1.5 pt-0.5">
+                            <button onclick="resetStickerEditor()" class="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-[11px] kb-subtext transition">
+                                تغيير
+                            </button>
+                            <button onclick="downloadStickerPng()" class="px-2.5 py-1.5 rounded-xl bg-sky-600/80 hover:bg-sky-500 text-white text-[11px] font-bold transition" title="تنزيل الملصق كصورة PNG">
+                                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                            </button>
+                            <button onclick="saveAndSendSticker()" class="flex-1 py-1.5 rounded-xl bg-gradient-to-r from-fuchsia-600 to-indigo-600 hover:brightness-110 text-white text-xs font-bold shadow-lg flex items-center justify-center gap-1.5 transition">
+                                <i data-lucide="send" class="w-3.5 h-3.5 rotate-180"></i>
+                                <span>حفظ في المكتبة وإرسال</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- تبويب 2: مكتبة الملصقات المحفوظة -->
+                <div id="sticker-view-library" class="hidden grid grid-cols-4 gap-2 pt-1"></div>
+            </div>
+
+            <!-- 4. الحافظة الذكية (Smart Clipboard Panel) -->
+            <div id="panel-clipboard" class="hidden p-2.5 space-y-2 h-[245px] overflow-y-auto no-scrollbar">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                        <i data-lucide="clipboard-check" class="w-4 h-4"></i>
+                        الحافظة الذكية (اضغط للصق)
+                    </span>
+                    <button onclick="togglePanel('keys')" class="text-[11px] kb-subtext hover:text-white bg-white/5 px-2 py-0.5 rounded-lg">إغلاق</button>
+                </div>
+                <div id="clipboard-list" class="space-y-1.5"></div>
+            </div>
+
+            <!-- 5. شاشة الإعدادات وتفعيل الكيبورد (Settings & Activation Panel) -->
+            <div id="panel-settings" class="hidden p-3 space-y-2.5 h-[265px] overflow-y-auto no-scrollbar">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                        <i data-lucide="sliders" class="w-4 h-4"></i>
+                        إعدادات الكيبورد والتفعيل
+                    </span>
+                    <button onclick="togglePanel('keys')" class="text-[11px] kb-subtext hover:text-white bg-white/5 px-2 py-0.5 rounded-lg">تم</button>
+                </div>
+
+                <!-- خطوات تفعيل الكيبورد في النظام -->
+                <div class="bg-emerald-950/40 border border-emerald-500/30 rounded-xl p-2.5 space-y-1">
+                    <div class="text-[11px] font-bold text-emerald-300 flex items-center justify-between">
+                        <span>حالة الكيبورد في النظام:</span>
+                        <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px]">مُفعّل ونشط ✓</span>
+                    </div>
+                    <p class="text-[10px] text-slate-300 leading-relaxed">
+                        لتفعيله على هاتفك: الإعدادات ← عام ← لوحة المفاتيح ← إضافة لوحة مفاتيح جديدة ← اختر <strong>كيبورد ذكي AI</strong> وفعّل "السماح بالوصول الكامل".
+                    </p>
+                </div>
+
+                <!-- ربط مساعد AI عبر خادم آمن -->
+                <div class="bg-indigo-950/50 border border-indigo-500/30 rounded-xl p-2.5 space-y-1.5">
+                    <div class="text-[11px] font-bold text-indigo-300 flex items-center gap-1.5">🔗 ربط مساعد الذكاء الاصطناعي</div>
+                    <input id="ai-endpoint-input" type="url" placeholder="رابط خادم AI (اختياري)" class="w-full bg-black/30 border border-white/15 rounded-lg px-2 py-1.5 text-[10px] text-white placeholder-slate-500 outline-none">
+                    <div class="flex gap-1.5">
+                        <button onclick="saveAISettings()" class="flex-1 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-[10px] font-bold">حفظ الاتصال</button>
+                        <button onclick="testAIConnection()" class="flex-1 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[10px] font-bold">اختبار</button>
+                    </div>
+                    <p class="text-[9px] text-slate-400 leading-relaxed">استخدم خادمًا وسيطًا يحمي مفتاح API. عند تركه فارغًا يعمل المساعد بالنماذج المحلية التجريبية.</p>
+                </div>
+
+                <!-- تخصيص الصوت وحجم الأزرار -->
+                <div class="space-y-2 text-xs">
+                    <div class="flex items-center justify-between bg-white/5 p-2 rounded-xl border border-white/10">
+                        <span class="font-semibold">صوت النقر على الأزرار</span>
+                        <button onclick="toggleSound()" id="sound-toggle-btn" class="px-2.5 py-1 rounded-lg bg-indigo-600 text-white text-[10px] font-bold">مُفعّل 🔊</button>
+                    </div>
+
+                    <div class="flex items-center justify-between bg-white/5 p-2 rounded-xl border border-white/10">
+                        <span class="font-semibold">ارتفاع وحجم الأزرار</span>
+                        <div class="flex gap-1">
+                            <button onclick="setKeySize('sm')" class="px-2 py-0.5 rounded bg-white/10 hover:bg-indigo-600 text-[10px] font-bold">صغير</button>
+                            <button onclick="setKeySize('md')" class="px-2 py-0.5 rounded bg-indigo-600 text-[10px] font-bold">متوسط</button>
+                            <button onclick="setKeySize('lg')" class="px-2 py-0.5 rounded bg-white/10 hover:bg-indigo-600 text-[10px] font-bold">كبير</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- إشعار منبثق أنيق (Toast Notification) -->
+    <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-800/95 border border-indigo-500/40 text-white px-4 py-2.5 rounded-2xl shadow-2xl text-xs font-bold flex items-center gap-2 opacity-0 pointer-events-none transition-all duration-300 z-50">
+        <i data-lucide="sparkles" class="w-4 h-4 text-indigo-400"></i>
+        <span id="toast-msg">تم التحديث!</span>
+    </div>
+
+    <script>
+        // تهيئة أيقونات Lucide
+        lucide.createIcons();
+
+        // تهيئة محرك الصوت الواقعي للأزرار (Tone.js)
+        let soundEnabled = true;
+        let clickSynth = null;
+        function playKeySound(isSpecial = false) {
+            if (!soundEnabled) return;
+            try {
+                if (!clickSynth) {
+                    clickSynth = new Tone.MembraneSynth({
+                        pitchDecay: 0.01,
+                        octaves: 2,
+                        envelope: { attack: 0.001, decay: 0.04, sustain: 0 }
+                    }).toDestination();
+                    clickSynth.volume.value = -14;
+                }
+                if (Tone.context.state !== 'running') {
+                    Tone.start();
+                }
+                clickSynth.triggerAttackRelease(isSpecial ? "C3" : "G3", "32n");
+            } catch (e) { /* تجاهل قيود المتصفح قبل التفاعل */ }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const btn = document.getElementById('sound-toggle-btn');
+            btn.innerText = soundEnabled ? 'مُفعّل 🔊' : 'صامت 🔇';
+            btn.classList.toggle('bg-indigo-600', soundEnabled);
+            btn.classList.toggle('bg-slate-700', !soundEnabled);
+        }
+
+        function setKeySize(size) {
+            const wrapper = document.getElementById('keyboard-wrapper');
+            wrapper.classList.remove('key-size-sm', 'key-size-md', 'key-size-lg');
+            wrapper.classList.add('key-size-' + size);
+            showToast('تم تحديث حجم أزرار الكيبورد');
+        }
+
+        // حالة التطبيق (Application State)
+        let currentText = "";
+        let kbMode = "ar"; // 'ar', 'arShift', 'en', 'enShift', 'num', 'emoji'
+        let lastAIResult = "";
+        let lastIncomingMessage = "هلا والله! كيف حالك؟ وش رايك نجتمع اليوم على القهوة الساعة 8 مساءً؟ ☕✨";
+        const liveAssist = { spell: false, translate: false, timer: null, result: '', mode: '' };
+
+        // الحافظة الذكية
+        let clipboardItems = [
+            "السلام عليكم ورحمة الله وبركاته، أسعد الله أوقاتك بكل خير.",
+            "العنوان: الرياض - حي العليا - طريق الملك فهد 📍",
+            "رقم الآيبان: SA03 8000 0000 6080 1016 7519"
+        ];
+
+        // حالة صانع الملصقات
+        let stickerState = {
+            type: 'emoji',
+            src: '',
+            caption: '',
+            font: 'font-kufi',
+            color: '#ffffff',
+            isCutout: false,
+            hasWhiteBorder: true
+        };
+
+        // ملصقات محفوظة مسبقاً
+        let savedStickers = [
+            { type: 'emoji', src: '🔥', caption: 'فخامة!', font: 'font-kufi', color: '#facc15', hasWhiteBorder: true },
+            { type: 'emoji', src: '😂', caption: 'مت ضحك', font: 'font-lalezar', color: '#ffffff', hasWhiteBorder: true },
+            { type: 'emoji', src: '❤️', caption: 'يسلمو', font: 'font-amiri', color: '#f472b6', hasWhiteBorder: true },
+            { type: 'emoji', src: '🫡', caption: 'تم طال عمرك', font: 'font-kufi', color: '#38bdf8', hasWhiteBorder: true }
+        ];
+
+        try {
+            const storedStickers = JSON.parse(localStorage.getItem('smartKeyboardStickers') || 'null');
+            if (Array.isArray(storedStickers)) savedStickers = storedStickers;
+        } catch (_) {}
+        let aiEndpoint = localStorage.getItem('smartKeyboardAIEndpoint') || '';
+
+        // تخطيطات لوحة المفاتيح (عربي / إنجليزي / أرقام ورموز / إيموجي)
+        const layouts = {
+            ar: [
+                ['ض', 'ص', 'ث', 'ق', 'ف', 'غ', 'ع', 'ه', 'خ', 'ح', 'ج'],
+                ['ش', 'س', 'ي', 'ب', 'ل', 'ا', 'ت', 'ن', 'م', 'ك', 'ط'],
+                ['SHIFT', 'ئ', 'ء', 'ؤ', 'ر', 'لا', 'ى', 'ة', 'و', 'ز', 'BACK'],
+                ['NUM', 'EMOJI', 'LANG', 'SPACE', '.', 'ENTER']
+            ],
+            arShift: [
+                ['َ', 'ً', 'ُ', 'ٌ', 'لإ', 'إ', '‘', '÷', '×', '؛', '<'],
+                ['ِ', 'ٍ', ']', '[', 'لأ', 'أ', 'ـ', '،', '/', ':', '"'],
+                ['SHIFT', '~', 'ْ', '}', '{', 'لآ', 'آ', '\'', ',', '؟', 'BACK'],
+                ['NUM', 'EMOJI', 'LANG', 'SPACE', '؟', 'ENTER']
+            ],
+            en: [
+                ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+                ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
+                ['SHIFT', 'z', 'x', 'c', 'v', 'b', 'n', 'm', 'BACK'],
+                ['NUM', 'EMOJI', 'LANG', 'SPACE', '.', 'ENTER']
+            ],
+            enShift: [
+                ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+                ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+                ['SHIFT', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', 'BACK'],
+                ['NUM', 'EMOJI', 'LANG', 'SPACE', '!', 'ENTER']
+            ],
+            num: [
+                ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
+                ['@', '#', '$', '%', '&', '-', '+', '(', ')', '/'],
+                ['*', '"', '\'', ':', ';', '!', '؟', '،', '~', 'BACK'],
+                ['ABC', 'EMOJI', 'SPACE', '.', 'ENTER']
+            ],
+            emoji: [
+                ['😀', '😂', '🥰', '😎', '🤩', '🥳', '😭', '😡', '🤯', '🫡'],
+                ['❤️', '🔥', '✨', '🎉', '👏', '🙏', '💯', '☕', '🌹', '🚀'],
+                ['👍', '👎', '🤝', '💪', '👀', '💡', '✅', '❌', '📍', 'BACK'],
+                ['ABC', 'NUM', 'SPACE', 'ENTER']
+            ]
+        };
+
+        // بناء أزرار لوحة المفاتيح
+        function renderKeyboard() {
+            const container = document.getElementById('keyboard-rows');
+            container.innerHTML = '';
+
+            const activeLayout = layouts[kbMode] || layouts.ar;
+
+            activeLayout.forEach(row => {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'flex justify-center gap-1';
+
+                row.forEach(key => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+
+                    if (key === 'SHIFT') {
+                        const isActive = kbMode === 'arShift' || kbMode === 'enShift';
+                        btn.className = `kb-key kb-key-action px-2 rounded-lg text-[11px] font-bold flex items-center justify-center ${isActive ? 'ring-1 ring-indigo-400 text-indigo-400' : ''}`;
+                        btn.innerHTML = kbMode.startsWith('ar') ? 'تشكيل' : '⇧';
+                        btn.onclick = () => {
+                            playKeySound(true);
+                            if (kbMode === 'ar') kbMode = 'arShift';
+                            else if (kbMode === 'arShift') kbMode = 'ar';
+                            else if (kbMode === 'en') kbMode = 'enShift';
+                            else if (kbMode === 'enShift') kbMode = 'en';
+                            renderKeyboard();
+                        };
+                    } else if (key === 'BACK') {
+                        btn.className = 'kb-key kb-key-action px-2.5 rounded-lg text-xs font-bold flex items-center justify-center';
+                        btn.innerHTML = '⌫';
+                        btn.onclick = () => { playKeySound(true); handleBackspace(); };
+                    } else if (key === 'NUM') {
+                        btn.className = 'kb-key kb-key-action px-2 rounded-lg text-[11px] font-bold flex items-center justify-center';
+                        btn.innerHTML = '123';
+                        btn.onclick = () => { playKeySound(true); kbMode = 'num'; renderKeyboard(); };
+                    } else if (key === 'ABC') {
+                        btn.className = 'kb-key kb-key-action px-2 rounded-lg text-[11px] font-bold flex items-center justify-center';
+                        btn.innerHTML = 'أبج';
+                        btn.onclick = () => { playKeySound(true); kbMode = 'ar'; renderKeyboard(); };
+                    } else if (key === 'EMOJI') {
+                        btn.className = 'kb-key kb-key-action px-2 rounded-lg text-sm flex items-center justify-center';
+                        btn.innerHTML = '😊';
+                        btn.onclick = () => { playKeySound(true); kbMode = 'emoji'; renderKeyboard(); };
+                    } else if (key === 'LANG') {
+                        btn.className = 'kb-key kb-key-action px-2 rounded-lg text-[11px] font-bold flex items-center justify-center';
+                        btn.innerHTML = kbMode.startsWith('ar') ? 'EN' : 'عربي';
+                        btn.onclick = () => {
+                            playKeySound(true);
+                            kbMode = kbMode.startsWith('ar') ? 'en' : 'ar';
+                            renderKeyboard();
+                        };
+                    } else if (key === 'SPACE') {
+                        btn.className = 'kb-key flex-1 rounded-lg text-xs font-semibold flex items-center justify-center';
+                        btn.innerHTML = kbMode.startsWith('en') ? 'Space' : 'مسافة';
+                        btn.onclick = () => { playKeySound(false); appendChar(' '); };
+                    } else if (key === 'ENTER') {
+                        btn.className = 'kb-key bg-indigo-600 text-white px-3 rounded-lg text-xs font-bold flex items-center justify-center';
+                        btn.innerHTML = 'إرسال';
+                        btn.onclick = () => { playKeySound(true); sendMessage(); };
+                    } else {
+                        btn.className = `kb-key flex-1 rounded-lg ${kbMode === 'emoji' ? 'text-lg' : 'text-sm font-semibold'} flex items-center justify-center`;
+                        btn.innerText = key;
+                        btn.onclick = () => { playKeySound(false); appendChar(key); };
+                    }
+
+                    rowDiv.appendChild(btn);
+                });
+
+                container.appendChild(rowDiv);
+            });
+        }
+
+        // إضافة حرف للنص
+        function appendChar(char) {
+            currentText += char;
+            updateInputDisplay();
+            updatePredictions();
+        }
+
+        // حذف حرف
+        function handleBackspace() {
+            // دعم حذف الإيموجي بشكل صحيح
+            const chars = Array.from(currentText);
+            chars.pop();
+            currentText = chars.join('');
+            updateInputDisplay();
+            updatePredictions();
+        }
+
+        // تحديث شاشة الإدخال
+        function updateInputDisplay() {
+            const textEl = document.getElementById('input-text');
+            const placeholderEl = document.getElementById('input-placeholder');
+            textEl.innerText = currentText;
+            placeholderEl.style.display = currentText.length > 0 ? 'none' : 'inline';
+            scheduleLiveAssist();
+        }
+
+        // تحديث التنبؤات الذكية بناءً على الكتابة
+        function updatePredictions() {
+            const bar = document.getElementById('predictive-bar');
+            let suggestions = ['السلام عليكم', 'إن شاء الله', 'يعطيك العافية'];
+
+            if (currentText.includes('مرحبا') || currentText.includes('هلا')) {
+                suggestions = ['هلا والله وغلا', 'كيف حالك؟', 'نورت المكان'];
+            } else if (currentText.includes('شكرا') || currentText.includes('مشكور')) {
+                suggestions = ['العفو ولو', 'تسلم يا غالي', 'ما سوينا شي'];
+            } else if (currentText.includes('اعتذر') || currentText.includes('اسف')) {
+                suggestions = ['حقك علي', 'بسبب الزحمة', 'ما تتكرر بإذن الله'];
+            }
+
+            bar.innerHTML = suggestions.map((s, idx) => `
+                <button onclick="applySuggestion('${s}')" class="text-xs py-1 rounded-lg hover:bg-white/10 ${idx === 1 ? 'text-indigo-400 font-bold border-x border-white/10' : 'kb-subtext'} truncate transition">
+                    ${s}
+                </button>
+            `).join('');
+        }
+
+        function applySuggestion(word) {
+            playKeySound(false);
+            if (currentText.length > 0 && !currentText.endsWith(' ')) {
+                currentText += ' ';
+            }
+            currentText += word + ' ';
+            updateInputDisplay();
+        }
+
+        // إدراج جملة تجريبية
+        function insertSampleText(sample) {
+            currentText = sample;
+            updateInputDisplay();
+            showToast('تم إدراج النص، افتح مساعد AI لتجربته ✨');
+        }
+
+        // التبديل بين ثيمات الكيبورد الثلاثة
+        const themesList = ['theme-neon', 'theme-light', 'theme-glass'];
+        let currentThemeIdx = 0;
+
+        function setTheme(themeName) {
+            const wrapper = document.getElementById('keyboard-wrapper');
+            wrapper.classList.remove('theme-neon', 'theme-light', 'theme-glass');
+            wrapper.classList.add(themeName);
+            currentThemeIdx = themesList.indexOf(themeName);
+
+            document.querySelectorAll('.theme-selector').forEach(btn => {
+                btn.classList.remove('ring-2', 'ring-cyan-400');
+            });
+            const activeBtn = document.getElementById('btn-' + themeName);
+            if (activeBtn) activeBtn.classList.add('ring-2', 'ring-cyan-400');
+        }
+
+        function cycleTheme() {
+            playKeySound(true);
+            currentThemeIdx = (currentThemeIdx + 1) % themesList.length;
+            setTheme(themesList[currentThemeIdx]);
+            const names = { 'theme-neon': 'الوضع الليلي النيون', 'theme-light': 'الوضع النهاري الأنيق', 'theme-glass': 'ثيم الزجاج الشفاف' };
+            showToast('الثيم: ' + names[themesList[currentThemeIdx]]);
+        }
+
+        // التبديل بين لوحات الكيبورد
+        function togglePanel(panelName) {
+            playKeySound(true);
+            const panels = ['keys', 'ai', 'sticker', 'clipboard', 'settings'];
+            panels.forEach(p => {
+                document.getElementById('panel-' + p).classList.add('hidden');
+            });
+            document.getElementById('panel-' + panelName).classList.remove('hidden');
+
+            const backToKeysBtn = document.getElementById('tab-keys');
+            if (panelName === 'keys') {
+                backToKeysBtn.classList.add('hidden');
+            } else {
+                backToKeysBtn.classList.remove('hidden');
+            }
+
+            if (panelName === 'clipboard') renderClipboard();
+            if (panelName === 'sticker') renderSavedStickers();
+        }
+
+        // ==========================================
+        // منطق مساعد الذكاء الاصطناعي (AI Assistant)
+        // ==========================================
+        function toggleLiveAssist(mode) {
+            liveAssist[mode] = !liveAssist[mode];
+            const btn = document.getElementById(mode === 'spell' ? 'live-spell-btn' : 'live-translate-btn');
+            btn.classList.toggle('ring-1', liveAssist[mode]);
+            btn.classList.toggle('ring-emerald-400', mode === 'spell' && liveAssist[mode]);
+            btn.classList.toggle('ring-sky-400', mode === 'translate' && liveAssist[mode]);
+            showToast(liveAssist[mode] ? (mode === 'spell' ? 'تم تفعيل التدقيق الفوري' : 'تم تفعيل الترجمة الفورية') : 'تم إيقاف الميزة الفورية');
+            scheduleLiveAssist();
+        }
+
+        function localSpellCheck(text) {
+            return text.replace(/التاخير/g, 'التأخير').replace(/الزحمه/g, 'الزحمة')
+                .replace(/ان شاء الله/g, 'إن شاء الله').replace(/انشاء الله/g, 'إن شاء الله')
+                .replace(/اسف/g, 'آسف').replace(/مبروكك/g, 'مبروك').replace(/شكراا/g, 'شكرًا')
+                .replace(/لاكن/g, 'لكن').replace(/هاذا/g, 'هذا').replace(/هاذه/g, 'هذه');
+        }
+
+        function localTranslate(text) {
+            const phrases = {
+                'السلام عليكم': 'Peace be upon you', 'كيف حالك': 'How are you?',
+                'شكرا': 'Thank you', 'شكرًا': 'Thank you', 'مرحبا': 'Hello',
+                'صباح الخير': 'Good morning', 'مساء الخير': 'Good evening',
+                'إن شاء الله': 'God willing', 'اعتذر عن التأخير': 'I apologize for the delay',
+                'ألف مبروك': 'Congratulations', 'يعطيك العافية': 'Thank you for your effort'
+            };
+            let result = text;
+            Object.keys(phrases).sort((a,b) => b.length-a.length).forEach(k => { result = result.replaceAll(k, phrases[k]); });
+            return result === text ? 'ترجمة مقترحة: ' + text : result;
+        }
+
+        function scheduleLiveAssist() {
+            if (liveAssist.timer) clearTimeout(liveAssist.timer);
+            if ((!liveAssist.spell && !liveAssist.translate) || !currentText.trim()) {
+                document.getElementById('live-assist-box').classList.add('hidden'); return;
+            }
+            liveAssist.timer = setTimeout(runLiveAssist, 650);
+        }
+
+        async function runLiveAssist() {
+            const mode = liveAssist.translate ? 'translate' : 'spell';
+            const box = document.getElementById('live-assist-box');
+            const label = document.getElementById('live-assist-label');
+            const output = document.getElementById('live-assist-output');
+            const apply = document.getElementById('live-assist-apply');
+            box.classList.remove('hidden'); apply.classList.add('hidden');
+            label.innerText = mode === 'spell' ? '⏳ تدقيق فوري...' : '⏳ ترجمة فورية...';
+            try {
+                const remote = await requestAIResult(mode);
+                liveAssist.result = remote ? remote.text : (mode === 'spell' ? localSpellCheck(currentText.trim()) : localTranslate(currentText.trim()));
+            } catch (_) {
+                liveAssist.result = mode === 'spell' ? localSpellCheck(currentText.trim()) : localTranslate(currentText.trim());
+            }
+            liveAssist.mode = mode;
+            label.innerText = mode === 'spell' ? '✓ التصحيح المقترح:' : '⇄ الترجمة المقترحة:';
+            output.innerText = liveAssist.result;
+            if (liveAssist.result && liveAssist.result !== currentText.trim()) apply.classList.remove('hidden');
+        }
+
+        function applyLiveAssist() {
+            if (!liveAssist.result) return;
+            currentText = liveAssist.result; updateInputDisplay();
+            showToast('تم اعتماد الاقتراح الفوري ✓');
+        }
+
+        async function processAI(mode) {
+            playKeySound(true);
+            const statusEl = document.getElementById('ai-status');
+            const outputEl = document.getElementById('ai-output');
+            const applyBtn = document.getElementById('ai-apply-btn');
+
+            if (mode !== 'reply' && !currentText.trim()) {
+                statusEl.innerText = '⚠️ اكتب نصاً في مربع الرسالة أولاً ليقوم الذكاء الاصطناعي بمعالجته!';
+                outputEl.classList.add('hidden');
+                applyBtn.classList.add('hidden');
+                return;
+            }
+
+            statusEl.innerText = '⏳ جاري التحليل والمعالجة بالذكاء الاصطناعي...';
+            outputEl.classList.add('hidden');
+            applyBtn.classList.add('hidden');
+
+            try {
+                const remoteResult = await requestAIResult(mode);
+                if (remoteResult) {
+                    lastAIResult = remoteResult.text;
+                    statusEl.innerText = remoteResult.label || '🤖 نتيجة مساعد AI المتصل:';
+                    outputEl.innerText = remoteResult.text;
+                    outputEl.classList.remove('hidden');
+                    applyBtn.classList.remove('hidden');
+                    return;
+                }
+            } catch (error) {
+                console.warn('AI endpoint unavailable; using local fallback', error);
+                statusEl.innerText = '⚠️ تعذر الاتصال بالخادم؛ تم استخدام المساعد المحلي.';
+            }
+
+            setTimeout(() => {
+                let result = currentText.trim();
+
+                if (mode === 'spell') {
+                    result = result
+                        .replace(/التاخير/g, 'التَّأْخِيرِ')
+                        .replace(/الزحمه/g, 'الزَّحْمَةِ')
+                        .replace(/ان شاء الله/g, 'إِنْ شَاءَ اللَّهُ')
+                        .replace(/انشاء الله/g, 'إِنْ شَاءَ اللَّهُ')
+                        .replace(/ياصديقي/g, 'يَا صَدِيقِي')
+                        .replace(/مرحبا/g, 'مَرْحَبًا')
+                        .replace(/مبروك/g, 'مُبَارَكٌ');
+                    if (result === currentText.trim()) {
+                        result = `تَمَّ تَدْقِيقُ النَّصِّ: "${result}" — السَّلَامَةُ اللُّغَوِيَّةُ مُمْتَازَةٌ ✓`;
+                    }
+                    statusEl.innerText = '✅ التصحيح الإملائي والتشكيل:';
+                } else if (mode === 'formal') {
+                    if (result.includes('اعتذر') || result.includes('التاخير')) {
+                        result = 'السلام عليكم ورحمة الله، أود الاعتذار عن التأخير الخارج عن إرادتي اليوم نظراً لازدحام السير. شاكرين لكم حسن تفهمكم.';
+                    } else if (result.includes('مبروك')) {
+                        result = 'أسمى آيات التهاني والتبريكات بمناسبة هذا النجاح الباهر، متمنياً لكم دوام التوفيق والتميز.';
+                    } else {
+                        result = `تحية طيبة وبعد، ${result}، وتفضلوا بقبول فائق الاحترام والتقدير.`;
+                    }
+                    statusEl.innerText = '👔 الصياغة الرسمية المقترحة:';
+                } else if (mode === 'friendly') {
+                    if (result.includes('اعتذر') || result.includes('التاخير')) {
+                        result = 'هلا والله! المعذرة منك تأخرت اليوم شوي بسبب الزحمة، مسافة الطريق وأكون عندك 🙏✨';
+                    } else if (result.includes('مبروك')) {
+                        result = 'ألف ألف مبرووووك النجاح يا بطل! والله فرحت لك من قلبي، تستاهل كل خير 🎓🥳🎉';
+                    } else {
+                        result = `يا هلا وغلا! ${result} 😊🌸`;
+                    }
+                    statusEl.innerText = '😊 الصياغة الودية المقترحة:';
+                } else if (mode === 'poetic') {
+                    result = `✨ "${result}" — كأنما نُسجت حروفها من ضياء القمر، تحمل في طياتها أرق المشاعر وأجمل الأماني.`;
+                    statusEl.innerText = '✨ الصياغة الشعرية:';
+                } else if (mode === 'translate') {
+                    const isArabic = /[\u0600-\u06FF]/.test(result);
+                    if (isArabic) {
+                        if (result.includes('اعتذر')) result = 'Hello! I sincerely apologize for the delay today due to heavy traffic.';
+                        else if (result.includes('مبروك')) result = 'Congratulations on your graduation and success! You truly deserve all the best.';
+                        else result = 'Hello! Hope you are having a wonderful and productive day.';
+                        statusEl.innerText = '🌐 الترجمة الفورية للإنجليزية:';
+                    } else {
+                        result = 'مرحباً! أتمنى لك يوماً رائعاً ومليئاً بالإنجازات.';
+                        statusEl.innerText = '🌐 الترجمة الفورية للعربية:';
+                    }
+                } else if (mode === 'reply') {
+                    if (lastIncomingMessage.includes('القهوة') || lastIncomingMessage.includes('نجتمع')) {
+                        result = 'يا هلا والله! فكرة رهيبة، تم الساعة 8 مناسب جداً، أشوفك على خير ☕😊';
+                    } else if (lastIncomingMessage.includes('ملصق')) {
+                        result = 'يسلم ذوقك! صممته خصيصاً بالكيبورد الذكي الجديد 😎✨';
+                    } else {
+                        result = 'أهلاً بك! يسعدني ذلك جداً، يعطيك ألف عافية 🌸✨';
+                    }
+                    statusEl.innerText = '💡 رد ذكي مقترح على آخر رسالة:';
+                }
+
+                lastAIResult = result;
+                outputEl.innerText = result;
+                outputEl.classList.remove('hidden');
+                applyBtn.classList.remove('hidden');
+            }, 400);
+        }
+
+        function applyAIResult() {
+            if (lastAIResult) {
+                playKeySound(true);
+                currentText = lastAIResult;
+                updateInputDisplay();
+                togglePanel('keys');
+                showToast('تم اعتماد النص في الرسالة ✨');
+            }
+        }
+
+        // ==========================================
+        // منطق صانع الملصقات المتكامل (Sticker Studio)
+        // ==========================================
+        function switchStickerTab(tab) {
+            playKeySound(true);
+            const isCreate = tab === 'create';
+            document.getElementById('sticker-view-create').classList.toggle('hidden', !isCreate);
+            document.getElementById('sticker-view-library').classList.toggle('hidden', isCreate);
+
+            document.getElementById('st-tab-create').className = isCreate
+                ? 'text-[11px] font-bold px-2.5 py-1 rounded-lg bg-fuchsia-600 text-white transition'
+                : 'text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white/10 kb-subtext transition';
+
+            document.getElementById('st-tab-library').className = !isCreate
+                ? 'text-[11px] font-bold px-2.5 py-1 rounded-lg bg-fuchsia-600 text-white transition'
+                : 'text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white/10 kb-subtext transition';
+
+            if (!isCreate) renderSavedStickers();
+        }
+
+        async function requestGeneratedSticker(prompt) {
+            if (!aiEndpoint) throw new Error('NO_AI_ENDPOINT');
+            const response = await fetch(aiEndpoint, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    mode: 'generate_sticker', prompt, language: 'ar',
+                    style: 'clean expressive messaging sticker', transparent: true,
+                    instructions: 'Create one centered subject, clean silhouette, transparent background, no watermark, no extra text unless requested.'
+                })
+            });
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            const data = await response.json();
+            const image = typeof data === 'string' ? data : (data.dataUrl || data.image || data.image_url || data.url || data.output);
+            if (!image || typeof image !== 'string') throw new Error('EMPTY_IMAGE');
+            return image;
+        }
+
+        async function generateAISticker() {
+            const promptEl = document.getElementById('ai-sticker-prompt');
+            const statusEl = document.getElementById('ai-sticker-status');
+            const button = document.getElementById('ai-sticker-generate-btn');
+            const prompt = promptEl.value.trim();
+            if (!prompt) { showToast('اكتب وصف الملصق أولاً'); promptEl.focus(); return; }
+            if (!aiEndpoint) {
+                statusEl.innerText = 'للتوليد الحقيقي، احفظ رابط خادم AI من الإعدادات أولاً.';
+                statusEl.classList.remove('hidden');
+                showToast('أضف رابط خادم AI من الإعدادات');
+                return;
+            }
+            button.disabled = true; button.classList.add('opacity-60');
+            statusEl.innerText = '⏳ جارٍ توليد الملصق من الوصف...'; statusEl.classList.remove('hidden');
+            try {
+                const image = await requestGeneratedSticker(prompt);
+                stickerState = { type: 'image', src: image, caption: '', font: 'font-kufi', color: '#ffffff', isCutout: true, hasWhiteBorder: true, prompt };
+                openStickerEditor();
+                statusEl.innerText = '✓ تم التوليد، يمكنك الآن التعديل والحفظ أو الإرسال.';
+                showToast('تم توليد الملصق بالذكاء الاصطناعي ✨');
+            } catch (error) {
+                console.warn('Sticker generation failed', error);
+                statusEl.innerText = error.message === 'NO_AI_ENDPOINT' ? 'أضف رابط خادم AI من الإعدادات.' : 'تعذر التوليد. تحقق من الاتصال واستجابة الخادم.';
+                showToast('تعذر توليد الملصق');
+            } finally {
+                button.disabled = false; button.classList.remove('opacity-60');
+            }
+        }
+
+        function handleImageUpload(event) {
+            const file = event.target.files && event.target.files[0];
+            loadStickerImage(file);
+            event.target.value = '';
+        }
+
+        function handleUploadDragOver(event) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'copy';
+        }
+
+        function handleUploadDrop(event) {
+            event.preventDefault();
+            const file = event.dataTransfer.files && event.dataTransfer.files[0];
+            loadStickerImage(file);
+        }
+
+        function loadStickerImage(file) {
+            if (!file) return;
+            if (!file.type.startsWith('image/')) {
+                showToast('اختر ملف صورة صالحاً من الاستديو');
+                return;
+            }
+            if (file.size > 15 * 1024 * 1024) {
+                showToast('حجم الصورة أكبر من 15 ميجابايت');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    stickerState = {
+                        type: 'image', src: e.target.result, caption: '',
+                        font: 'font-kufi', color: '#ffffff', isCutout: false, hasWhiteBorder: true,
+                        width: img.naturalWidth, height: img.naturalHeight, name: file.name
+                    };
+                    openStickerEditor();
+                    setTimeout(() => toggleSmartCutout(true), 250);
+                };
+                img.onerror = () => showToast('تعذر قراءة الصورة، جرّب صورة أخرى');
+                img.src = e.target.result;
+            };
+            reader.onerror = () => showToast('تعذر استيراد الصورة من الاستديو');
+            reader.readAsDataURL(file);
+        }
+
+        function selectPresetSticker(preset) {
+            playKeySound(true);
+            const presets = {
+                cat: { emoji: '🐱', defaultText: 'وش السالفة؟!' },
+                coffee: { emoji: '☕', defaultText: 'روقان القهوة' },
+                cool: { emoji: '😎', defaultText: 'أمورك طيبة' },
+                party: { emoji: '🥳', defaultText: 'ألف مبروك!' }
+            };
+            const item = presets[preset];
+            stickerState = {
+                type: 'emoji',
+                src: item.emoji,
+                caption: item.defaultText,
+                font: 'font-kufi',
+                color: '#facc15',
+                isCutout: true,
+                hasWhiteBorder: true
+            };
+            openStickerEditor();
+        }
+
+        function openStickerEditor() {
+            document.getElementById('sticker-step-select').classList.add('hidden');
+            document.getElementById('sticker-step-editor').classList.remove('hidden');
+            document.getElementById('sticker-caption-input').value = stickerState.caption;
+            document.getElementById('sticker-font-select').value = stickerState.font;
+            renderStickerPreview();
+        }
+
+        function resetStickerEditor() {
+            document.getElementById('sticker-step-editor').classList.add('hidden');
+            document.getElementById('sticker-step-select').classList.remove('hidden');
+            document.getElementById('studio-upload').value = '';
+        }
+
+        function toggleSmartCutout(forceTrue = false) {
+            playKeySound(true);
+            const scanner = document.getElementById('ai-scanner');
+            scanner.classList.remove('hidden');
+
+            setTimeout(() => {
+                scanner.classList.add('hidden');
+                stickerState.isCutout = forceTrue ? true : !stickerState.isCutout;
+                renderStickerPreview();
+                showToast(stickerState.isCutout ? '✂️ تم عزل الخلفية بالذكاء الاصطناعي!' : 'تمت استعادة الإطار الأصلي');
+            }, 600);
+        }
+
+        function toggleWhiteBorder() {
+            playKeySound(true);
+            stickerState.hasWhiteBorder = !stickerState.hasWhiteBorder;
+            renderStickerPreview();
+        }
+
+        function updateStickerCaption(val) {
+            stickerState.caption = val;
+            updateStickerStyle();
+        }
+
+        function setStickerColor(hex) {
+            playKeySound(false);
+            stickerState.color = hex;
+            updateStickerStyle();
+        }
+
+        function updateStickerStyle() {
+            stickerState.font = document.getElementById('sticker-font-select').value;
+            const overlay = document.getElementById('sticker-overlay-text');
+            overlay.className = `absolute bottom-1 px-1.5 py-0.5 rounded bg-black/75 text-[11px] font-bold text-center max-w-[92%] truncate pointer-events-none ${stickerState.font}`;
+            overlay.style.color = stickerState.color;
+
+            if (stickerState.caption.trim()) {
+                overlay.innerText = stickerState.caption;
+                overlay.classList.remove('hidden');
+            } else {
+                overlay.classList.add('hidden');
+            }
+        }
+
+        function renderStickerPreview() {
+            const container = document.getElementById('sticker-preview-content');
+            const borderClass = stickerState.hasWhiteBorder ? 'sticker-cutout' : '';
+            const cutoutShape = stickerState.isCutout ? 'rounded-full scale-105' : 'rounded-xl';
+
+            if (stickerState.type === 'image') {
+                container.innerHTML = `<img src="${stickerState.src}" class="w-full h-full object-cover ${cutoutShape} ${borderClass}" alt="ملصق">`;
+            } else {
+                container.innerHTML = `<span class="text-5xl select-none ${borderClass}">${stickerState.src}</span>`;
+            }
+
+            updateStickerStyle();
+
+            document.getElementById('btn-cutout').classList.toggle('bg-cyan-500', stickerState.isCutout);
+            document.getElementById('btn-cutout').classList.toggle('text-slate-950', stickerState.isCutout);
+            document.getElementById('btn-border').classList.toggle('bg-white', stickerState.hasWhiteBorder);
+            document.getElementById('btn-border').classList.toggle('text-slate-900', stickerState.hasWhiteBorder);
+        }
+
+        function saveAndSendSticker() {
+            playKeySound(true);
+            savedStickers.unshift({ ...stickerState });
+            try { localStorage.setItem('smartKeyboardStickers', JSON.stringify(savedStickers.slice(0, 30))); } catch (_) {}
+            document.getElementById('sticker-count').innerText = savedStickers.length;
+            sendStickerMessage(stickerState);
+            resetStickerEditor();
+            togglePanel('keys');
+            showToast('تم حفظ الملصق في المكتبة وإرساله 🎨✨');
+        }
+
+        function renderSavedStickers() {
+            const grid = document.getElementById('sticker-view-library');
+            document.getElementById('sticker-count').innerText = savedStickers.length;
+            grid.innerHTML = savedStickers.map((st, index) => {
+                const borderClass = st.hasWhiteBorder ? 'sticker-cutout' : '';
+                const media = st.type === 'image'
+                    ? `<img src="${st.src}" class="w-12 h-12 object-cover rounded-full ${borderClass}">`
+                    : `<span class="text-3xl ${borderClass}">${st.src}</span>`;
+
+                return `
+                    <button onclick="sendSavedSticker(${index})" class="relative bg-white/5 hover:bg-white/15 border border-white/10 rounded-xl p-1.5 flex flex-col items-center justify-center h-20 transition">
+                        ${media}
+                        ${st.caption ? `<span style="color:${st.color || '#fff'}" class="mt-1 text-[9px] ${st.font || 'font-kufi'} bg-black/75 px-1.5 rounded truncate max-w-full">${st.caption}</span>` : ''}
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function sendSavedSticker(index) {
+            playKeySound(true);
+            sendStickerMessage(savedStickers[index]);
+            togglePanel('keys');
+        }
+
+        // ==========================================
+        // الحافظة الذكية (Smart Clipboard)
+        // ==========================================
+        async function requestAIResult(mode) {
+            if (!aiEndpoint) return null;
+            const response = await fetch(aiEndpoint, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mode, text: currentText.trim(), lastMessage: lastIncomingMessage, language: 'ar' })
+            });
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            const data = await response.json();
+            const text = typeof data === 'string' ? data : (data.text || data.result || data.output || '');
+            return text ? { text, label: data.label } : null;
+        }
+
+        function saveAISettings() {
+            aiEndpoint = document.getElementById('ai-endpoint-input').value.trim();
+            if (aiEndpoint) localStorage.setItem('smartKeyboardAIEndpoint', aiEndpoint);
+            else localStorage.removeItem('smartKeyboardAIEndpoint');
+            showToast(aiEndpoint ? 'تم حفظ رابط مساعد AI' : 'تم تفعيل المساعد المحلي');
+        }
+
+        async function testAIConnection() {
+            saveAISettings();
+            if (!aiEndpoint) { showToast('أدخل رابط خادم AI أولاً'); return; }
+            try {
+                const result = await requestAIResult('reply');
+                showToast(result ? 'الاتصال بمساعد AI ناجح ✓' : 'الخادم متصل لكن الاستجابة فارغة');
+            } catch (_) { showToast('تعذر الاتصال بخادم AI'); }
+        }
+
+        function renderStickerToCanvas() {
+            return new Promise((resolve, reject) => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 512; canvas.height = 512;
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, 512, 512);
+                if (stickerState.type === 'emoji') {
+                    ctx.font = '260px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillText(stickerState.src, 256, 235);
+                    finish(); return;
+                }
+                const img = new Image();
+                img.onload = () => {
+                    const scale = Math.min(440 / img.width, 440 / img.height);
+                    const w = img.width * scale, h = img.height * scale;
+                    ctx.drawImage(img, 256 - w / 2, 215 - h / 2, w, h);
+                    finish();
+                };
+                img.onerror = reject; img.src = stickerState.src;
+                function finish() {
+                    if (stickerState.caption.trim()) {
+                        ctx.font = 'bold 30px Cairo, sans-serif'; ctx.textAlign = 'center';
+                        ctx.fillStyle = stickerState.color || '#fff';
+                        ctx.strokeStyle = 'rgba(0,0,0,.75)'; ctx.lineWidth = 10;
+                        ctx.strokeText(stickerState.caption, 256, 475, 470);
+                        ctx.fillText(stickerState.caption, 256, 475, 470);
+                    }
+                    resolve(canvas);
+                }
+            });
+        }
+
+        async function downloadStickerPng() {
+            try {
+                const canvas = await renderStickerToCanvas();
+                const link = document.createElement('a');
+                link.download = 'sticker-' + Date.now() + '.png'; link.href = canvas.toDataURL('image/png');
+                link.click(); showToast('تم تنزيل الملصق بصيغة PNG ✓');
+            } catch (_) { showToast('تعذر تجهيز الملصق للتنزيل'); }
+        }
+
+        async function copyCurrentToClipboard() {
+            if (!currentText.trim()) {
+                showToast('مربع الرسالة فارغ حالياً');
+                return;
+            }
+            clipboardItems.unshift(currentText.trim());
+            // نسخ فعلي للحافظة
+            const tempInput = document.createElement('textarea');
+            tempInput.value = currentText.trim();
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            try {
+                if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(currentText.trim());
+                else { tempInput.select(); document.execCommand('copy'); }
+            } catch (_) { tempInput.select(); document.execCommand('copy'); }
+            document.body.removeChild(tempInput);
+            showToast('تم حفظ النص في الحافظة الذكية 📋');
+        }
+
+        function renderClipboard() {
+            const list = document.getElementById('clipboard-list');
+            list.innerHTML = clipboardItems.map((item, idx) => `
+                <div onclick="pasteFromClipboard(${idx})" class="p-2 rounded-xl bg-white/5 hover:bg-indigo-600/25 border border-white/10 text-xs cursor-pointer transition flex items-center justify-between gap-2">
+                    <span class="truncate">${escapeHtml(item)}</span>
+                    <span class="text-[10px] text-indigo-400 font-bold shrink-0">لصق</span>
+                </div>
+            `).join('');
+        }
+
+        function pasteFromClipboard(idx) {
+            playKeySound(true);
+            currentText += (currentText && !currentText.endsWith(' ') ? ' ' : '') + clipboardItems[idx];
+            updateInputDisplay();
+            togglePanel('keys');
+            showToast('تم اللصق من الحافظة الذكية ✓');
+        }
+
+        // ==========================================
+        // إدارة رسائل المحادثة (Chat Functions)
+        // ==========================================
+        function sendMessage() {
+            if (!currentText.trim()) return;
+
+            const chatBox = document.getElementById('chat-messages');
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'flex justify-end msg-animate';
+            msgDiv.innerHTML = `
+                <div class="bg-gradient-to-br from-indigo-600 to-indigo-700 text-white px-3.5 py-2.5 rounded-2xl rounded-bl-sm text-xs sm:text-sm max-w-[82%] shadow-md">
+                    <p class="leading-relaxed">${escapeHtml(currentText)}</p>
+                    <span class="block text-[10px] text-indigo-200 mt-1 text-left">${timeStr} ✓✓</span>
+                </div>
+            `;
+
+            chatBox.appendChild(msgDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            currentText = '';
+            updateInputDisplay();
+            updatePredictions();
+
+            simulateReply();
+        }
+
+        function sendStickerMessage(sticker) {
+            const chatBox = document.getElementById('chat-messages');
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+            const borderClass = sticker.hasWhiteBorder ? 'sticker-cutout' : '';
+
+            const mediaHtml = sticker.type === 'image'
+                ? `<img src="${sticker.src}" class="w-28 h-28 object-cover rounded-full ${borderClass}" alt="ملصق">`
+                : `<span class="text-7xl select-none ${borderClass}">${sticker.src}</span>`;
+
+            const captionHtml = sticker.caption
+                ? `<div style="color:${sticker.color || '#ffffff'}" class="mt-1 px-3 py-0.5 rounded-full bg-slate-900/90 border border-white/20 ${sticker.font || 'font-kufi'} text-sm font-bold shadow-lg">${escapeHtml(sticker.caption)}</div>`
+                : '';
+
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'flex flex-col items-end msg-animate py-1';
+            msgDiv.innerHTML = `
+                <div class="relative flex flex-col items-center">
+                    ${mediaHtml}
+                    ${captionHtml}
+                </div>
+                <span class="text-[10px] text-slate-400 mt-1">${timeStr} ✓✓</span>
+            `;
+
+            chatBox.appendChild(msgDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            simulateReply(true);
+        }
+
+        function simulateReply(isSticker = false) {
+            setTimeout(() => {
+                const chatBox = document.getElementById('chat-messages');
+                const replies = isSticker
+                    ? ['هههههه رهييييب الملصق! الخط والقص مرتب جداً 😂🔥', 'يجنن الملصق! أرسلي لي غيره 😍✨']
+                    : ['يا سلام على الأسلوب الراقي! ✨👏', 'تم الاتفاق، نلتقي على خير إن شاء الله 😊'];
+                const randomReply = replies[Math.floor(Math.random() * replies.length)];
+                lastIncomingMessage = randomReply;
+
+                const replyDiv = document.createElement('div');
+                replyDiv.className = 'flex items-end gap-2 max-w-[82%] msg-animate';
+                replyDiv.innerHTML = `
+                    <div class="bg-slate-800/90 text-slate-100 px-3.5 py-2.5 rounded-2xl rounded-br-sm text-xs sm:text-sm shadow-md border border-slate-700/50">
+                        ${randomReply}
+                        <span class="block text-[10px] text-slate-400 mt-1 text-left">الآن</span>
+                    </div>
+                `;
+                chatBox.appendChild(replyDiv);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }, 850);
+        }
+
+        function clearChat() {
+            const chatBox = document.getElementById('chat-messages');
+            chatBox.innerHTML = `<div class="text-center text-[11px] text-slate-500 my-2">تم مسح المحادثة</div>`;
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.remove('opacity-0', 'translate-y-2');
+            toast.classList.add('opacity-100', 'translate-y-0');
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                toast.classList.remove('opacity-100', 'translate-y-0');
+            }, 2500);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // تشغيل التهيئة الأولية للكيبورد
+        renderKeyboard();
+        const aiInput = document.getElementById('ai-endpoint-input');
+        if (aiInput) aiInput.value = aiEndpoint;
+        if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+    </script>
+</body>
+</html>
